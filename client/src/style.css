@@ -132,7 +132,8 @@ input.code {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 12px calc(8px + env(safe-area-inset-top));
+  padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px
+    calc(12px + env(safe-area-inset-left));
   background: rgba(10, 14, 28, 0.85);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid #1c264a;
