@@ -1,34 +1,55 @@
 // End-to-end smoke test: drives the built app in Chromium to verify solo play
 // and 2-player online multiplayer against the real server.
+//
+// Two topologies (env MODE):
+//   single (default) — the Node server serves both the client and /ws.
+//   pages            — client served by `vite preview` under a subpath
+//                      (like GitHub Pages), multiplayer over a cross-origin WS
+//                      to the Node server (like Render). Built beforehand with
+//                      PAGES_BASE + VITE_WS_URL matching PORT.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const PORT = 8791;
-const BASE = `http://localhost:${PORT}`;
+const MODE = process.env.MODE ?? 'single';
+const PORT = Number(process.env.PORT ?? 8791);
+const PREVIEW_PORT = Number(process.env.PREVIEW_PORT ?? 4173);
+const BASE_PATH = process.env.PAGES_BASE ?? '/';
 const EXEC = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
+const SERVER_ORIGIN = `http://localhost:${PORT}`;
+const PAGE_URL =
+  MODE === 'pages' ? `http://localhost:${PREVIEW_PORT}${BASE_PATH}` : `${SERVER_ORIGIN}/`;
+
 const serverEntry = fileURLToPath(new URL('../server/dist/index.js', import.meta.url));
+const clientDir = fileURLToPath(new URL('../client', import.meta.url));
 
 function startServer() {
-  const proc = spawn('node', [serverEntry], {
+  return spawn('node', [serverEntry], {
     env: { ...process.env, PORT: String(PORT) },
     stdio: 'inherit',
   });
-  return proc;
 }
 
-async function waitForServer() {
-  for (let i = 0; i < 40; i++) {
+function startPreview() {
+  return spawn(
+    'npm',
+    ['run', 'preview', '--', '--port', String(PREVIEW_PORT), '--strictPort'],
+    { cwd: clientDir, env: { ...process.env, PAGES_BASE: BASE_PATH }, stdio: 'inherit' },
+  );
+}
+
+async function waitFor(url) {
+  for (let i = 0; i < 60; i++) {
     try {
-      const res = await fetch(`${BASE}/healthz`);
+      const res = await fetch(url);
       if (res.ok) return;
     } catch {
       /* not up yet */
     }
     await new Promise((r) => setTimeout(r, 250));
   }
-  throw new Error('server did not start');
+  throw new Error(`timed out waiting for ${url}`);
 }
 
 async function launch() {
@@ -78,12 +99,20 @@ function check(name, cond) {
   }
 }
 
+async function testPagesAssets() {
+  console.log('PAGES ASSETS');
+  for (const rel of ['manifest.webmanifest', 'sw.js', 'icons/icon-192.png', 'icons/icon.svg']) {
+    const res = await fetch(`${PAGE_URL}${rel}`);
+    check(`${BASE_PATH}${rel} -> ${res.status}`, res.status === 200);
+  }
+}
+
 async function testSolo(browser) {
   console.log('SOLO');
   const page = await browser.newPage({ viewport: { width: 390, height: 780 } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto(BASE);
+  await page.goto(PAGE_URL);
   await page.getByText('はじめる').click();
   await page.getByText('1人で遊ぶ（ソロ）').click();
   await page.waitForSelector('canvas');
@@ -105,7 +134,7 @@ async function testMultiplayer(browser) {
   host.on('pageerror', (e) => errs.push('host: ' + e.message));
   guest.on('pageerror', (e) => errs.push('guest: ' + e.message));
 
-  await host.goto(BASE);
+  await host.goto(PAGE_URL);
   await host.getByText('はじめる').click();
   await host.locator('.field').fill('HOST');
   await host.getByText('オンライン対戦（最大4人）').click();
@@ -114,7 +143,7 @@ async function testMultiplayer(browser) {
   const code = (await host.locator('.roomcode').innerText()).trim();
   check(`room code created: ${code}`, code.length === 4);
 
-  await guest.goto(BASE);
+  await guest.goto(PAGE_URL);
   await guest.getByText('はじめる').click();
   await guest.locator('.field').fill('GUEST');
   await guest.getByText('オンライン対戦（最大4人）').click();
@@ -148,15 +177,20 @@ async function testMultiplayer(browser) {
 }
 
 async function main() {
+  console.log(`MODE=${MODE}  page=${PAGE_URL}  ws-server=${SERVER_ORIGIN}`);
   const server = startServer();
+  const preview = MODE === 'pages' ? startPreview() : null;
   try {
-    await waitForServer();
+    await waitFor(`${SERVER_ORIGIN}/healthz`);
+    if (preview) await waitFor(PAGE_URL);
+    if (MODE === 'pages') await testPagesAssets();
     const browser = await launch();
     await testSolo(browser);
     await testMultiplayer(browser);
     await browser.close();
   } finally {
     server.kill();
+    preview?.kill();
   }
   if (failures) {
     console.error(`\n${failures} check(s) failed`);
