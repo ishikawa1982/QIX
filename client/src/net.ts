@@ -2,6 +2,11 @@
 import type { ClientMessage, ServerMessage } from '@shared/types';
 
 function wsUrl(): string {
+  // When hosted separately from the game server (e.g. the client on GitHub
+  // Pages), VITE_WS_URL points at the WebSocket server. Otherwise connect to
+  // the same origin (single-service / Render / local dev via Vite proxy).
+  const configured = import.meta.env.VITE_WS_URL;
+  if (configured) return configured;
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   return `${proto}://${location.host}/ws`;
 }

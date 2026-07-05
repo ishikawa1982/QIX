@@ -18,7 +18,8 @@
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
     "gen:icons": "node scripts/gen-icons.mjs",
     "smoke": "npm run build && node scripts/smoke.mjs",
-    "verify": "npm run typecheck && npm test && npm run smoke"
+    "smoke:pages": "PAGES_BASE=/qix/ VITE_WS_URL=ws://localhost:8787/ws npm run --workspace client build && npm run --workspace server build && MODE=pages PORT=8787 PREVIEW_PORT=4173 PAGES_BASE=/qix/ node scripts/smoke.mjs",
+    "verify": "npm run typecheck && npm test && npm run smoke && npm run smoke:pages"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

@@ -79,9 +79,44 @@ docker run -p 8080:8080 qix   # http://localhost:8080
 > WebSocket を使うため、リバースプロキシ / ホストの設定で `/ws` の Upgrade（ws/wss）が
 > 通ることを確認してください（Render・Railway・Fly はデフォルトで対応）。
 
+## GitHub Pages で公開（＋ Render で対戦サーバー）
+
+GitHub Pages は**静的配信のみ**で WebSocket サーバーを動かせないため、二段構成にします。
+
+- **クライアント（PWA）→ GitHub Pages**: ソロは完全に動作。公開 URL は
+  `https://<user>.github.io/<repo>/`（例: `https://ishikawa1982.github.io/qix/`）。
+- **対戦サーバー（ws）→ Render**: 上記「Render / Docker」でデプロイ。Pages のクライアントは
+  ビルド時に埋め込む `VITE_WS_URL` で Render の `/ws` に接続します。
+
+### 手順
+
+1. **対戦サーバーを Render にデプロイ**（同梱 `render.yaml` / `Dockerfile`）。払い出された URL を控える
+   （例 `https://qix.onrender.com`）。対戦用の WebSocket URL は `wss://qix.onrender.com/ws`。
+2. **GitHub リポジトリ設定**:
+   - `Settings → Pages → Build and deployment → Source = GitHub Actions`。
+   - `Settings → Secrets and variables → Actions → Variables` に
+     **リポジトリ変数 `VITE_WS_URL`** を追加し、値を `wss://<app>.onrender.com/ws` に設定。
+3. **デプロイ**: 既定ブランチ（`main`）へ push すると `.github/workflows/deploy-pages.yml` が
+   クライアントをサブパス（`/<repo>/`）向けにビルドして Pages に公開します。
+   手動実行は `Actions → Deploy client to GitHub Pages → Run workflow`。
+
+補足:
+- Pages は HTTPS のため、対戦サーバーは **`wss://`（TLS）** が必須です（`ws://` は mixed content で拒否）。
+- `VITE_WS_URL` 未設定でもビルドは通り**ソロは動作**します（対戦は接続失敗トーストになります）。
+- Render を使わず**1 サービス構成**（サーバーがクライアントも配信）にする場合は上記「Docker / Render」
+  だけで完結し、`VITE_WS_URL` は不要です（同一オリジンの `/ws` に接続）。
+
+### ローカル検証（Pages + Render 相当）
+
+```bash
+npm run smoke:pages   # client をサブパス /qix/ でビルド→vite preview 配信、
+                      # 別オリジンの ws サーバーへ接続してソロ＋2人対戦を E2E 検証
+```
+
 ## MVP の範囲と今後
 
-実装済み: ソロ（敵・ライフ・勝敗）、最大4人オンライン対戦（ルーム／権威ループ／確保同期）、PWA、Docker。
+実装済み: ソロ（敵・ライフ・勝敗）、最大4人オンライン対戦（ルーム／権威ループ／確保同期）、PWA、
+Docker、GitHub Pages 自動デプロイ（＋ Render 対戦サーバー）。
 
 今後の拡張（stretch）:
 

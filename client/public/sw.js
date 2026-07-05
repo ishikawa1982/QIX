@@ -2,10 +2,13 @@
 // Network-first for navigations, cache-first for other same-origin GETs.
 const CACHE = 'qix-v1';
 
+// Resolve URLs relative to the SW location so it works under any base path
+// (root for local/Render, "/<repo>/" for GitHub Pages project sites).
+const ROOT = new URL('./', self.location).href;
+const SHELL = ['./', './index.html', './manifest.webmanifest'];
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(['/', '/index.html', '/manifest.webmanifest'])),
-  );
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
   self.skipWaiting();
 });
 
@@ -20,7 +23,7 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
   // Never cache the WebSocket upgrade or cross-origin requests.
-  if (req.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/ws')) {
+  if (req.method !== 'GET' || url.origin !== self.location.origin || url.pathname.endsWith('/ws')) {
     return;
   }
   if (req.mode === 'navigate') {
@@ -28,10 +31,10 @@ self.addEventListener('fetch', (event) => {
       fetch(req)
         .then((res) => {
           const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put('/', copy));
+          caches.open(CACHE).then((c) => c.put(ROOT, copy));
           return res;
         })
-        .catch(() => caches.match('/').then((r) => r || caches.match('/index.html'))),
+        .catch(() => caches.match(ROOT).then((r) => r || caches.match(new URL('./index.html', self.location).href))),
     );
     return;
   }
