@@ -46,6 +46,10 @@ export class UI {
     this.root.replaceChildren(screen);
   }
 
+  private versionTag(): HTMLElement {
+    return el('div', 'version', `v${__APP_VERSION__} (${__BUILD_ID__})`);
+  }
+
   showTitle(onStart: () => void): void {
     const s = el('div', 'screen');
     const c = el('div', 'center');
@@ -56,7 +60,7 @@ export class UI {
     const btn = el('button', 'btn', 'はじめる');
     btn.addEventListener('click', onStart);
     c.append(btn);
-    s.append(c);
+    s.append(c, this.versionTag());
     this.mount(s);
   }
 
@@ -77,7 +81,7 @@ export class UI {
     const online = el('button', 'btn secondary', 'オンライン対戦（最大4人）');
     online.addEventListener('click', onOnline);
     c.append(solo, online);
-    s.append(c);
+    s.append(c, this.versionTag());
     this.mount(s);
   }
 
