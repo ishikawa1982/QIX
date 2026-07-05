@@ -202,17 +202,23 @@ input.code {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   background: radial-gradient(circle at 50% 30%, #0e1530, #070a15);
 }
 .playfield canvas {
   display: block;
   border-radius: 4px;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .controls {
   padding: 10px 10px calc(14px + env(safe-area-inset-bottom));
   display: flex;
   justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 .dpad {
   display: grid;

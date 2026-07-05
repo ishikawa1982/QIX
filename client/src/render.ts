@@ -37,6 +37,7 @@ export class Renderer {
   private cell = 1;
   private offX = 0;
   private offY = 0;
+  private resizeObserver?: ResizeObserver;
 
   constructor(private canvas: HTMLCanvasElement, private config: GameConfig) {
     this.ctx = canvas.getContext('2d')!;
@@ -46,6 +47,13 @@ export class Renderer {
     this.bufCtx = this.buffer.getContext('2d')!;
     this.image = this.bufCtx.createImageData(config.width, config.height);
     this.resize();
+    // Re-fit whenever the play area changes size. The D-pad is added to the
+    // layout after this constructor runs, which shrinks the play area; without
+    // this the canvas would stay too tall and overlap the controls.
+    if (typeof ResizeObserver !== 'undefined' && this.canvas.parentElement) {
+      this.resizeObserver = new ResizeObserver(() => this.resize());
+      this.resizeObserver.observe(this.canvas.parentElement);
+    }
   }
 
   resize(): void {
