@@ -316,6 +316,19 @@ input.code {
   text-align: left;
 }
 
+.version {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
