@@ -1,0 +1,12 @@
+# Render.com blueprint — one service that serves the PWA and the WebSocket API.
+# Deploy: push to GitHub, then "New +" -> "Blueprint" and pick this repo.
+services:
+  - type: web
+    name: qix
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 8080

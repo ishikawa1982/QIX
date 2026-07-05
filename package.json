@@ -1,0 +1,29 @@
+{
+  "name": "qix",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:client": "npm --workspace client run dev",
+    "build": "npm --workspace client run build && npm --workspace server run build",
+    "start": "node server/dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.base.json --noEmit",
+    "gen:icons": "node scripts/gen-icons.mjs",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "verify": "npm run typecheck && npm test && npm run smoke"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "playwright": "^1.61.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
